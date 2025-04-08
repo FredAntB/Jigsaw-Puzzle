@@ -149,7 +149,6 @@ function loadImages(sheet, sceneGroup)
             }
         end
     end
-    -- return board
 end
 
 -- shuffle the images for the jigsaw
@@ -194,14 +193,13 @@ function shuffleBoard(shuffles)
             -- Update the empty location
             empty_location = {tempRow, tempCol}
 
-            -- Decrement the shuffle counter
             shuffles = shuffles - 1
         end
     end
     return {board, empty_location}
 end
 
--- Crepate the board
+-- Create the board
 function createBoard(sceneGroup)
     local options =
     {
@@ -226,7 +224,6 @@ function createBoard(sceneGroup)
     gameOverText:setFillColor(0.4, 0.1, 0.6)
     gameOverText.alpha = 0
 
-    -- Add the timer display
     timerText = display.newText(sceneGroup, "Time: 0s", CW / 2, CH / 4 - 90, native.systemFont, 30)
     timerText:setFillColor(1, 1, 1)
 end
@@ -257,8 +254,16 @@ end
 
 function returnToMenu()
     if canGoBack then
+        composer.removeScene("game")
         composer.gotoScene("menu", {effect = "fade", time = 500})
     end
+end
+
+-- logic to reset game
+function resetGame()
+    elapsedTime = 0
+    timerText.text = "Time: 0s"
+    createBoard(scene.view)
 end
 
 -- -----------------------------------------------------------------------------------
@@ -326,6 +331,7 @@ function scene:hide( event )
         end
     elseif ( phase == "did" ) then
         -- Code here runs immediately after the scene goes entirely off screen
+        -- resetGame()
     end
 end
  
