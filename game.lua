@@ -124,6 +124,8 @@ function movePiece(self, event)
             timer.cancel(gameTimer)
 
             timerText.y = timerText.y + 30
+
+            transition.to(board[empty_location[1]][empty_location[2]].image, {time = 500, alpha = 1})
         end
     end
     return true
@@ -257,13 +259,6 @@ function returnToMenu()
         composer.removeScene("game")
         composer.gotoScene("menu", {effect = "fade", time = 500})
     end
-end
-
--- logic to reset game
-function resetGame()
-    elapsedTime = 0
-    timerText.text = "Time: 0s"
-    createBoard(scene.view)
 end
 
 -- -----------------------------------------------------------------------------------
