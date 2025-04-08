@@ -25,6 +25,11 @@ local offsetY = (CH - sheetH) / 4
 
 -- offsetX: -25.625 offsetY: -67.5
 
+-- timer variables
+local elapsedTime = 0
+local timerText = nil
+local gameTimer = nil
+
 -- constant image paths
 local bg_img = "./Assets/background.png"
 local back_button_default = "./Assets/back_button.png"
@@ -38,6 +43,12 @@ local gameOverText = nil
 local board = {}
 local cuts = 0
 local empty_location = {}
+
+-- timer logic
+local function updateTimer()
+    elapsedTime = elapsedTime + 1
+    timerText.text = "Time: " .. elapsedTime .. "s"
+end
 
 -- find the piece containing the image that was touched based on it's x, y values
 function findRowAndColByCoordinates(x, y)
@@ -108,8 +119,11 @@ function movePiece(self, event)
         
         if verifyGameOver() then
             gameOverText.alpha = 1
-
             removeEventListeners()
+            
+            timer.cancel(gameTimer)
+
+            timerText.y = timerText.y + 30
         end
     end
     return true
@@ -119,7 +133,7 @@ end
 function loadImages(sheet, sceneGroup)
     local pieceW = (sheetW / cuts) * scaleX
     local pieceH = (sheetH / cuts) * scaleY
-
+    
     for i = 1, cuts do
         board[i] = {}
         for j = 1, cuts do
@@ -151,7 +165,7 @@ function shuffleBoard(shuffles)
             {x = 1, y = 0}   -- Right
         }
         local move = directions[math.random(1, #directions)]
-
+        
         -- Calculate the new position of the empty space
         local newX = empty_location[1] + move.x
         local newY = empty_location[2] + move.y
@@ -161,12 +175,12 @@ function shuffleBoard(shuffles)
             -- Swap the empty space with the adjacent piece
             local empty_piece = board[empty_location[1]][empty_location[2]]
             local adjacent_piece = board[newX][newY]
-
+            
             -- Swap positions visually
             local tempX, tempY = empty_piece.image.x, empty_piece.image.y
             empty_piece.image.x, empty_piece.image.y = adjacent_piece.image.x, adjacent_piece.image.y
             adjacent_piece.image.x, adjacent_piece.image.y = tempX, tempY
-
+            
             -- Swap positions in the board table
             local tempRow, tempCol = adjacent_piece.row, adjacent_piece.column
             board[empty_location[1]][empty_location[2]] = adjacent_piece
@@ -176,7 +190,7 @@ function shuffleBoard(shuffles)
             board[newX][newY] = empty_piece
             empty_piece.row = tempRow
             empty_piece.column = tempCol
-
+            
             -- Update the empty location
             empty_location = {tempRow, tempCol}
 
@@ -211,6 +225,10 @@ function createBoard(sceneGroup)
     gameOverText = display.newText(sceneGroup, "You Win!", CW / 2, CH / 4 - 90, native.systemFont, 40)
     gameOverText:setFillColor(0.4, 0.1, 0.6)
     gameOverText.alpha = 0
+
+    -- Add the timer display
+    timerText = display.newText(sceneGroup, "Time: 0s", CW / 2, CH / 4 - 90, native.systemFont, 30)
+    timerText:setFillColor(1, 1, 1)
 end
 
 -- add event listeners to the pieces
@@ -249,12 +267,12 @@ end
 
 -- create()
 function scene:create( event )
- 
+    
     local sceneGroup = self.view
     -- Code here runs when the scene is first created but has not yet appeared on screen
 
     cuts = event.params.cuts
-
+    
     local bg = display.newImageRect(sceneGroup, bg_img, display.contentWidth, display.contentHeight)
     bg.anchorX = 0; bg.anchorY = 0
 
@@ -268,7 +286,7 @@ function scene:create( event )
         onRelease = returnToMenu
     })
     sceneGroup:insert(back_button)
-
+    
     createBoard(sceneGroup)
 end
  
@@ -283,10 +301,11 @@ function scene:show( event )
     if ( phase == "will" ) then
         -- Code here runs when the scene is still off screen (but is about to come on screen)
         addEventListeners()
- 
+        
     elseif ( phase == "did" ) then
         -- Code here runs when the scene is entirely on screen
         canGoBack = true
+        gameTimer = timer.performWithDelay(1000, updateTimer, 0)
     end
 end
 
@@ -302,6 +321,9 @@ function scene:hide( event )
         if hasEventListener then
             removeEventListeners()
         end
+        if gameTimer then
+            timer.cancel(gameTimer)
+        end
     elseif ( phase == "did" ) then
         -- Code here runs immediately after the scene goes entirely off screen
     end
@@ -314,7 +336,7 @@ function scene:destroy( event )
     -- Code here runs prior to the removal of scene's view
 end
  
- 
+
 -- -----------------------------------------------------------------------------------
 -- Scene event function listeners
 -- -----------------------------------------------------------------------------------
