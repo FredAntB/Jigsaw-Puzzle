@@ -25,6 +25,9 @@ local offsetY = (CH - sheetH) / 4
 local bg_img = "./Assets/background.png"
 local puzzle = "./Assets/puzzle.png"
 
+local hasEventListener = false
+local gameOverText = nil
+
 local board = {}
 local cuts = 0
 local empty_location = {}
@@ -55,6 +58,7 @@ function verifyGameOver()
     for i = 1, cuts do
         for j = 1, cuts do
             local piece_number = cuts * (i - 1) + j
+            print("Expected piece_number: " .. piece_number .. ", Actual ID: " .. board[i][j].id)
             if board[i][j].id ~= piece_number then
                 isGameOver = false
                 break
@@ -94,10 +98,11 @@ function movePiece(self, event)
             -- Update the empty location
             empty_location = {tempRow, tempCol}
         end
-    elseif event.phase == "ended" then
+        
         if verifyGameOver() then
-            local gameOverText = display.newText("Game Over!", CW / 2, CH / 2, native.systemFont, 40)
-            gameOverText:setFillColor(1, 0, 0) -- Red color
+            gameOverText.alpha = 1
+
+            removeEventListeners()
         end
     end
     return true
@@ -193,8 +198,12 @@ function createBoard(sceneGroup)
     p_bg.anchorX = 0; p_bg.anchorY = 0
     
     loadImages(sheet, sceneGroup)
-
+    
     shuffleBoard(cuts * cuts * 2)
+
+    gameOverText = display.newText(sceneGroup, "You Win!", CW / 2, CH / 4 - 90, native.systemFont, 40)
+    gameOverText:setFillColor(0.4, 0.1, 0.6)
+    gameOverText.alpha = 0
 end
 
 -- add event listeners to the pieces
@@ -206,6 +215,19 @@ function addEventListeners()
             piece:addEventListener("touch", piece)
         end
     end
+    hasEventListener = true
+end
+
+-- remove event listeners to the pieces
+function removeEventListeners()
+    for i = 1, #board do
+        for j = 1, #board[i] do
+            local piece = board[i][j].image
+            piece.touch = movePiece
+            piece:removeEventListener("touch", piece)
+        end
+    end
+    hasEventListener = false
 end
 
 -- -----------------------------------------------------------------------------------
@@ -252,9 +274,11 @@ function scene:hide( event )
     
     if ( phase == "will" ) then
         -- Code here runs when the scene is on screen (but is about to go off screen)
+        if hasEventListener then
+            removeEventListeners()
+        end
     elseif ( phase == "did" ) then
         -- Code here runs immediately after the scene goes entirely off screen
- 
     end
 end
  
