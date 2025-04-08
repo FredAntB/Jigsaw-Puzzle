@@ -26,12 +26,39 @@ local bg_img = "./Assets/background.png"
 local puzzle = "./Assets/puzzle.png"
 
 local board = {}
+local empty_location = {}
+
+-- verify if a piece is adjacent to the empty space
+local function isAdjacent(piece, empty_location)
+    return (piece.row == empty_location[1] and math.abs(piece.column - empty_location[2]) == 1) or
+           (piece.column == empty_location[2] and math.abs(piece.row - empty_location[1]) == 1)
+end
 
 -- logic for piece movement
 function movePiece(self, event)
     if event.phase == "began" then
-        
+        if not isAdjacent(self, empty_location) then
+            -- If the piece is not adjacent to the empty space, do nothing
+            return
+        end
+    elseif event.phase == "ended" then
+        -- Swap the piece with the empty space
+        local empty_piece = board[empty_location[1]][empty_location[2]]
+        local tempX, tempY = self.x, self.y
+        self.x, self.y = empty_piece.image.x, empty_piece.image.y
+        empty_piece.image.x, empty_piece.image.y = tempX, tempY
+
+        -- Update the board table
+        board[empty_location[1]][empty_location[2]] = self
+        self.row, self.column = empty_location[1], empty_location[2]
+
+        board[self.row][self.column] = empty_piece
+        empty_piece.row, empty_piece.column = self.row, self.column
+
+        -- Update the empty location
+        empty_location = {self.row, self.column}
     end
+    return true
 end
 
 -- Load the image of the jigsaw piece
@@ -48,7 +75,9 @@ function loadImages(cuts, sheet, sceneGroup)
             piece.x = (j - 1) * pieceW - offsetX; piece.y = (i - 1) * pieceH - offsetY
             board[i][j] = {
                 id = piece_number,
-                image = piece
+                image = piece,
+                row = i,
+                column = j
             }
         end
     end
@@ -57,7 +86,7 @@ end
 
 -- shuffle the images for the jigsaw
 function shuffleBoard(cuts, shuffles)
-    local empty_location = {cuts, cuts}
+    empty_location = {cuts, cuts}
     board[cuts][cuts].image.alpha = 0
     while shuffles > 0 do
         -- Generate a random direction to move the empty space
@@ -86,7 +115,12 @@ function shuffleBoard(cuts, shuffles)
 
             -- Swap positions in the board table
             board[empty_location[1]][empty_location[2]] = adjacent_piece
+            adjacent_piece.row = empty_location[1]
+            adjacent_piece.column = empty_location[2]
+
             board[newX][newY] = empty_piece
+            empty_piece.row = newX
+            empty_piece.column = newY
 
             -- Update the empty location
             empty_location = {newX, newY}
@@ -120,6 +154,17 @@ function createBoard(cuts, sceneGroup)
     shuffleBoard(cuts, cuts * cuts * 2)
 end
 
+-- add event listeners to the pieces
+function addEventListeners()
+    for i = 1, #board do
+        for j = 1, #board[i] do
+            local piece = board[i][j].image
+            piece.touch = movePiece
+            piece:addEventListener("touch", piece)
+        end
+    end
+end
+
 -- -----------------------------------------------------------------------------------
 -- Scene event functions
 -- -----------------------------------------------------------------------------------
@@ -146,6 +191,7 @@ function scene:show( event )
  
     if ( phase == "will" ) then
         -- Code here runs when the scene is still off screen (but is about to come on screen)
+        addEventListeners()
  
     elseif ( phase == "did" ) then
         -- Code here runs when the scene is entirely on screen
