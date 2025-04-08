@@ -1,4 +1,7 @@
 local graphics = require( "graphics" )
+
+local widget = require("widget")
+
 local composer = require( "composer" )
  
 local scene = composer.newScene()
@@ -22,10 +25,14 @@ local offsetY = (CH - sheetH) / 4
 
 -- offsetX: -25.625 offsetY: -67.5
 
+-- constant image paths
 local bg_img = "./Assets/background.png"
+local back_button_default = "./Assets/back_button.png"
+local back_button_effect = "./Assets/back_button_effect.png"
 local puzzle = "./Assets/puzzle.png"
 
 local hasEventListener = false
+local canGoBack = false
 local gameOverText = nil
 
 local board = {}
@@ -230,6 +237,12 @@ function removeEventListeners()
     hasEventListener = false
 end
 
+function returnToMenu()
+    if canGoBack then
+        composer.gotoScene("menu", {effect = "fade", time = 500})
+    end
+end
+
 -- -----------------------------------------------------------------------------------
 -- Scene event functions
 -- -----------------------------------------------------------------------------------
@@ -244,6 +257,17 @@ function scene:create( event )
 
     local bg = display.newImageRect(sceneGroup, bg_img, display.contentWidth, display.contentHeight)
     bg.anchorX = 0; bg.anchorY = 0
+
+    back_button = widget.newButton({ 
+        top=10,
+        left = 5,
+        defaultFile = "./Assets/back_button.png",
+        overFile = "./Assets/back_button_effect.png",
+        width = 28,
+        height = 30,
+        onRelease = returnToMenu
+    })
+    sceneGroup:insert(back_button)
 
     createBoard(sceneGroup)
 end
@@ -262,6 +286,7 @@ function scene:show( event )
  
     elseif ( phase == "did" ) then
         -- Code here runs when the scene is entirely on screen
+        canGoBack = true
     end
 end
 
