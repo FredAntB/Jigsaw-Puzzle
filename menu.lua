@@ -63,7 +63,7 @@ function scene:create( event )
         fillColor = { default={1,0,0,1}, over={1,0.1,0.7,0.4} },
         strokeColor = { default={1,0.4,0,1}, over={0.8,0.8,1,1} },
         strokeWidth = 4,
-        id = 2,
+        id = 3,
         onRelease = startGame
     })
     level2.x = display.contentCenterX
@@ -79,7 +79,7 @@ function scene:create( event )
         fillColor = { default={1,0,0,1}, over={1,0.1,0.7,0.4} },
         strokeColor = { default={1,0.4,0,1}, over={0.8,0.8,1,1} },
         strokeWidth = 4,
-        id = 3,
+        id = 13,
         onRelease = startGame
     })
     level3.x = display.contentCenterX

@@ -14,63 +14,87 @@ local CH = display.contentHeight
 local sheetW = 525
 local sheetH = 750
 
+local scaleX = display.contentScaleX
+local scaleY = display.contentScaleY
+
+local offsetX = (CW - sheetW) / 8
+local offsetY = (CH - sheetH) / 4
+
+-- offsetX: -25.625 offsetY: -67.5
+
+local bg_img = "./Assets/background.png"
 local puzzle = "./Assets/puzzle.png"
 
--- Load the image of the jigsaw piece
-function loadImages(cuts, sheet)
-    local pieceW = sheetW / cuts
-    local pieceH = sheetH / cuts
+local board = {}
 
-    local board = {}
+-- logic for piece movement
+function movePiece(self, event)
+    if event.phase == "began" then
+        
+    end
+end
+
+-- Load the image of the jigsaw piece
+function loadImages(cuts, sheet, sceneGroup)
+    local pieceW = (sheetW / cuts) * scaleX
+    local pieceH = (sheetH / cuts) * scaleY
+
     for i = 1, cuts do
         board[i] = {}
         for j = 1, cuts do
             piece_number = cuts*(i - 1) + j
-            piece = display.newImageRect(sheet, piece_number, (i - 1) * pieceW, (j - 1) * pieceH)
+            piece = display.newImageRect(sceneGroup, sheet, piece_number, pieceW, pieceH)
             piece.anchorX = 0; piece.anchorY = 0
-            board[i][j] = piece
+            piece.x = (j - 1) * pieceW - offsetX; piece.y = (i - 1) * pieceH - offsetY
+            board[i][j] = {
+                id = piece_number,
+                image = piece
+            }
         end
     end
-    -- group:insert(board)
-    return board
+    -- return board
 end
 
 -- shuffle the images for the jigsaw
-function shuffleBoard(cuts, board, shuffles)
+function shuffleBoard(cuts, shuffles)
     local empty_location = {cuts, cuts}
-    repeat
-        local x = math.random(-1, 1)
-        local y = math.random(-1, 1)
-        local first_axis = math.random(1, 2)
+    board[cuts][cuts].image.alpha = 0
+    while shuffles > 0 do
+        -- Generate a random direction to move the empty space
+        local directions = {
+            {x = 0, y = -1}, -- Up
+            {x = 0, y = 1},  -- Down
+            {x = -1, y = 0}, -- Left
+            {x = 1, y = 0}   -- Right
+        }
+        local move = directions[math.random(1, #directions)]
 
-        if first_axis == 1 then
-            if empty_location[1] + x < cuts + 1 and empty_location[1] + x > 0 then
-                local temp = board[empty_location[1] + x][empty_location[2]]
-                board[empty_location[1] + x][empty_location[2]] = board[empty_location[1]][empty_location[2]]
-                board[empty_location[1]][empty_location[2]] = temp
-            end
-            
-            if empty_location[2] + y < cuts + 1 and empty_location[2] + y > 0 then
-                local temp = board[empty_location[1]][empty_location[2] + y]
-                board[empty_location[1]][empty_location[2] + y] = board[empty_location[1]][empty_location[2]]
-                board[empty_location[1]][empty_location[2]] = temp
-            end
-        elseif first_axis == 2 then
-            if empty_location[2] + y < cuts + 1 and empty_location[2] + y > 0 then
-                local temp = board[empty_location[1]][empty_location[2] + y]
-                board[empty_location[1]][empty_location[2] + y] = board[empty_location[1]][empty_location[2]]
-                board[empty_location[1]][empty_location[2]] = temp
-            end
-            
-            if empty_location[1] + x < cuts + 1 and empty_location[1] + x > 0 then
-                local temp = board[empty_location[1] + x][empty_location[2]]
-                board[empty_location[1] + x][empty_location[2]] = board[empty_location[1]][empty_location[2]]
-                board[empty_location[1]][empty_location[2]] = temp
-            end
-        end
+        -- Calculate the new position of the empty space
+        local newX = empty_location[1] + move.x
+        local newY = empty_location[2] + move.y
         
-        shuffles = shuffles - 1
-    until shuffles > 0
+        -- Check if the new position is within bounds
+        if newX > 0 and newX <= cuts and newY > 0 and newY <= cuts then
+            -- Swap the empty space with the adjacent piece
+            local empty_piece = board[empty_location[1]][empty_location[2]]
+            local adjacent_piece = board[newX][newY]
+
+            -- Swap positions visually
+            local tempX, tempY = empty_piece.image.x, empty_piece.image.y
+            empty_piece.image.x, empty_piece.image.y = adjacent_piece.image.x, adjacent_piece.image.y
+            adjacent_piece.image.x, adjacent_piece.image.y = tempX, tempY
+
+            -- Swap positions in the board table
+            board[empty_location[1]][empty_location[2]] = adjacent_piece
+            board[newX][newY] = empty_piece
+
+            -- Update the empty location
+            empty_location = {newX, newY}
+
+            -- Decrement the shuffle counter
+            shuffles = shuffles - 1
+        end
+    end
     return {board, empty_location}
 end
 
@@ -86,8 +110,14 @@ function createBoard(cuts, sceneGroup)
     }
     sheet = graphics.newImageSheet( puzzle, options )
 
-    -- local board = loadImages(cuts, sheet)
-    piece = display.newImageRect(sheet, 1, 0, 0, sheetW / cuts, sheetH / cuts)
+    -- set background color for puzzle
+    p_bg = display.newRect(sceneGroup, math.abs(offsetX), math.abs(offsetY), sheetW * scaleX, sheetH * scaleY)
+    p_bg:setFillColor(0)
+    p_bg.anchorX = 0; p_bg.anchorY = 0
+    
+    loadImages(cuts, sheet, sceneGroup)
+
+    shuffleBoard(cuts, cuts * cuts * 2)
 end
 
 -- -----------------------------------------------------------------------------------
@@ -100,7 +130,8 @@ function scene:create( event )
     local sceneGroup = self.view
     -- Code here runs when the scene is first created but has not yet appeared on screen
 
-    print("we are going to do " .. event.params.cuts)
+    local bg = display.newImageRect(sceneGroup, bg_img, display.contentWidth, display.contentHeight)
+    bg.anchorX = 0; bg.anchorY = 0
 
     createBoard(event.params.cuts, sceneGroup)
 end
