@@ -25,6 +25,11 @@ local offsetY = (CH - sheetH) / 4
 
 -- offsetX: -25.625 offsetY: -67.5
 
+-- counter variables
+local count = 0
+local counterText = nil
+local gameCounter = nil
+
 -- timer variables
 local elapsedTime = 0
 local timerText = nil
@@ -43,6 +48,10 @@ local gameOverText = nil
 local board = {}
 local cuts = 0
 local empty_location = {}
+
+local function updateCounter()
+    counterText.text = "Moves: " .. count
+end
 
 -- timer logic
 local function updateTimer()
@@ -115,6 +124,7 @@ function movePiece(self, event)
 
             -- Update the empty location
             empty_location = {tempRow, tempCol}
+            count = count + 1
         end
         
         if verifyGameOver() then
@@ -122,8 +132,10 @@ function movePiece(self, event)
             removeEventListeners()
             
             timer.cancel(gameTimer)
+            timer.cancel(gameCounter)
 
             timerText.y = timerText.y + 30
+            counterText.y = counterText.y + 30
 
             transition.to(board[empty_location[1]][empty_location[2]].image, {time = 500, alpha = 1})
         end
@@ -226,8 +238,11 @@ function createBoard(sceneGroup)
     gameOverText:setFillColor(0.4, 0.1, 0.6)
     gameOverText.alpha = 0
 
-    timerText = display.newText(sceneGroup, "Time: 0s", CW / 2, CH / 4 - 90, native.systemFont, 30)
+    timerText = display.newText(sceneGroup, "Time: 0s", CW / 2 - 40, CH / 4 - 90, native.systemFont, 20)
     timerText:setFillColor(1, 1, 1)
+
+    counterText = display.newText(sceneGroup, "Moves: 0", CW / 2 + 60, CH / 4 - 90, native.systemFont, 20)
+    counterText:setFillColor(1, 1, 1)
 end
 
 -- add event listeners to the pieces
@@ -306,6 +321,7 @@ function scene:show( event )
         -- Code here runs when the scene is entirely on screen
         canGoBack = true
         gameTimer = timer.performWithDelay(1000, updateTimer, 0)
+        gameCounter = timer.performWithDelay(100, updateCounter, 0)
     end
 end
 
@@ -321,8 +337,13 @@ function scene:hide( event )
         if hasEventListener then
             removeEventListeners()
         end
+
         if gameTimer then
             timer.cancel(gameTimer)
+        end
+        
+        if gameCounter then
+            timer.cancel(gameCounter)
         end
     elseif ( phase == "did" ) then
         -- Code here runs immediately after the scene goes entirely off screen
