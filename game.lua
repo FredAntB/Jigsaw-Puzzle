@@ -26,43 +26,85 @@ local bg_img = "./Assets/background.png"
 local puzzle = "./Assets/puzzle.png"
 
 local board = {}
+local cuts = 0
 local empty_location = {}
 
+-- find the piece containing the image that was touched based on it's x, y values
+function findRowAndColByCoordinates(x, y)
+    -- Calculate the width and height of each piece
+    local pieceW = (sheetW / cuts) * scaleX
+    local pieceH = (sheetH / cuts) * scaleY
+    
+    -- Calculate the row and column based on the x and y coordinates
+    local column = math.floor((x + offsetX) / pieceW) + 1
+    local row = math.floor((y + offsetY) / pieceH) + 1
+
+    -- Return the row and column as a table
+    return { row = row, column = column }
+end
+
 -- verify if a piece is adjacent to the empty space
-local function isAdjacent(piece, empty_location)
+function isAdjacent(piece)
     return (piece.row == empty_location[1] and math.abs(piece.column - empty_location[2]) == 1) or
            (piece.column == empty_location[2] and math.abs(piece.row - empty_location[1]) == 1)
+end
+
+-- verify if the game is over
+function verifyGameOver()
+    local isGameOver = true
+    for i = 1, cuts do
+        for j = 1, cuts do
+            local piece_number = cuts * (i - 1) + j
+            if board[i][j].id ~= piece_number then
+                isGameOver = false
+                break
+            end
+        end
+        if not isGameOver then break end
+    end
+
+    return isGameOver
 end
 
 -- logic for piece movement
 function movePiece(self, event)
     if event.phase == "began" then
-        if not isAdjacent(self, empty_location) then
-            -- If the piece is not adjacent to the empty space, do nothing
-            return
+        -- Retrieve the corresponding piece to the touched image
+        local rowcol = findRowAndColByCoordinates(self.x, self.y)
+        local touched_piece = board[rowcol.row][rowcol.column]
+
+        if isAdjacent(touched_piece) then
+            -- Swap the piece with the empty space
+            local empty_piece = board[empty_location[1]][empty_location[2]]
+
+            -- Swap positions visually
+            local tempX, tempY = touched_piece.image.x, touched_piece.image.y
+            touched_piece.image.x, touched_piece.image.y = empty_piece.image.x, empty_piece.image.y
+            empty_piece.image.x, empty_piece.image.y = tempX, tempY
+
+            -- Update the board table
+            board[empty_location[1]][empty_location[2]] = touched_piece
+            board[touched_piece.row][touched_piece.column] = empty_piece
+
+            -- Update the row and column values
+            local tempRow, tempCol = touched_piece.row, touched_piece.column
+            touched_piece.row, touched_piece.column = empty_location[1], empty_location[2]
+            empty_piece.row, empty_piece.column = tempRow, tempCol
+
+            -- Update the empty location
+            empty_location = {tempRow, tempCol}
         end
     elseif event.phase == "ended" then
-        -- Swap the piece with the empty space
-        local empty_piece = board[empty_location[1]][empty_location[2]]
-        local tempX, tempY = self.x, self.y
-        self.x, self.y = empty_piece.image.x, empty_piece.image.y
-        empty_piece.image.x, empty_piece.image.y = tempX, tempY
-
-        -- Update the board table
-        board[empty_location[1]][empty_location[2]] = self
-        self.row, self.column = empty_location[1], empty_location[2]
-
-        board[self.row][self.column] = empty_piece
-        empty_piece.row, empty_piece.column = self.row, self.column
-
-        -- Update the empty location
-        empty_location = {self.row, self.column}
+        if verifyGameOver() then
+            local gameOverText = display.newText("Game Over!", CW / 2, CH / 2, native.systemFont, 40)
+            gameOverText:setFillColor(1, 0, 0) -- Red color
+        end
     end
     return true
 end
 
 -- Load the image of the jigsaw piece
-function loadImages(cuts, sheet, sceneGroup)
+function loadImages(sheet, sceneGroup)
     local pieceW = (sheetW / cuts) * scaleX
     local pieceH = (sheetH / cuts) * scaleY
 
@@ -85,7 +127,7 @@ function loadImages(cuts, sheet, sceneGroup)
 end
 
 -- shuffle the images for the jigsaw
-function shuffleBoard(cuts, shuffles)
+function shuffleBoard(shuffles)
     empty_location = {cuts, cuts}
     board[cuts][cuts].image.alpha = 0
     while shuffles > 0 do
@@ -114,16 +156,17 @@ function shuffleBoard(cuts, shuffles)
             adjacent_piece.image.x, adjacent_piece.image.y = tempX, tempY
 
             -- Swap positions in the board table
+            local tempRow, tempCol = adjacent_piece.row, adjacent_piece.column
             board[empty_location[1]][empty_location[2]] = adjacent_piece
             adjacent_piece.row = empty_location[1]
             adjacent_piece.column = empty_location[2]
 
             board[newX][newY] = empty_piece
-            empty_piece.row = newX
-            empty_piece.column = newY
+            empty_piece.row = tempRow
+            empty_piece.column = tempCol
 
             -- Update the empty location
-            empty_location = {newX, newY}
+            empty_location = {tempRow, tempCol}
 
             -- Decrement the shuffle counter
             shuffles = shuffles - 1
@@ -133,7 +176,7 @@ function shuffleBoard(cuts, shuffles)
 end
 
 -- Crepate the board
-function createBoard(cuts, sceneGroup)
+function createBoard(sceneGroup)
     local options =
     {
         width = sheetW / cuts,
@@ -149,9 +192,9 @@ function createBoard(cuts, sceneGroup)
     p_bg:setFillColor(0)
     p_bg.anchorX = 0; p_bg.anchorY = 0
     
-    loadImages(cuts, sheet, sceneGroup)
+    loadImages(sheet, sceneGroup)
 
-    shuffleBoard(cuts, cuts * cuts * 2)
+    shuffleBoard(cuts * cuts * 2)
 end
 
 -- add event listeners to the pieces
@@ -175,10 +218,12 @@ function scene:create( event )
     local sceneGroup = self.view
     -- Code here runs when the scene is first created but has not yet appeared on screen
 
+    cuts = event.params.cuts
+
     local bg = display.newImageRect(sceneGroup, bg_img, display.contentWidth, display.contentHeight)
     bg.anchorX = 0; bg.anchorY = 0
 
-    createBoard(event.params.cuts, sceneGroup)
+    createBoard(sceneGroup)
 end
  
  
